@@ -1,10 +1,13 @@
+# importing the libraries
 import sqlite3
 import pandas as pd
 
+# connecting to a database 
 con = sqlite3.connect("carsharing.db", isolation_level=None)
 
 cur = con.cursor()
 
+# creating the first table in the database
 cur.execute("""CREATE TABLE cars_table (id INTEGER PRIMARY KEY,
     timestamp TEXT,
     season TEXT,
@@ -17,9 +20,19 @@ cur.execute("""CREATE TABLE cars_table (id INTEGER PRIMARY KEY,
     windspeed REAL,
     demand INTEGER);""")
 
+# importing csv file and inserting the values in the file to the table we have created
 cars_table = pd.read_csv("CarSharing.csv")
 cars_table.to_sql('cars_table', con, if_exists='append', index=False)
 
+""" 
+a. Add a column to the CarSharing table named “temp_category”. This column should 
+contain three string values. If the “feels-like” temperature is less than 10 then the 
+corresponding value in the temp_category column should be “Cold”, if the feels-like 
+temperature is between 10 and 25, the value should be “Mild”, and if the feels-like
+temperature is greater than 25, then the value should be “Hot” 
+"""
+
+# adding a new column to the 'cars_table'
 cur.execute("""
 ALTER TABLE cars_table
 ADD COLUMN temp_categories TEXT;
@@ -36,6 +49,12 @@ SET temp_categories =
         END;
 """)
 
+"""
+b. Create another table named “temperature” by selecting the temp, temp_feel, and 
+temp_category columns. Then drop the temp and temp_feel columns from the CarSharing 
+table. 
+"""
+# create a new table
 cur.execute("""
         CREATE TABLE temperature
         AS SELECT temp, temp_feel, temp_categories FROM cars_table;
@@ -51,6 +70,12 @@ cur.execute("""
         DROP COLUMN temp_feel;
 """)
 
+"""
+c. Find the distinct values of the weather column and assign a number to each value. Add 
+another column named “weather_code” to the table containing each row’s assigned
+weather code. 
+"""
+# print distinct values of the weather column from cars_table
 res = cur.execute("""
         SELECT DISTINCT weather
         FROM cars_table;    
@@ -59,6 +84,7 @@ res = cur.execute("""
 for row in res:
         print(row[0])
 
+# adding another column to cars_table
 cur.execute("""
         ALTER TABLE cars_table
         ADD COLUMN weather_code INTEGER;   
@@ -76,6 +102,10 @@ cur.execute("""
                 END;
 """)
 
+"""
+d. Create a table called “weather” and copy the columns “weather” and “weather_code” to 
+this table. Then drop the weather column from the CarSharing table
+"""
 cur.execute("""
         CREATE TABLE weather 
         AS SELECT weather, weather_code FROM cars_table;
@@ -86,6 +116,10 @@ cur.execute("""
         DROP COLUMN weather;
 """)
 
+"""
+e. Create a table called time with four columns containing each row’s timestamp, hour, 
+weekday name, and month name 
+"""
 cur.execute("""
         CREATE TABLE time
         AS SELECT timestamp FROM cars_table;
@@ -121,7 +155,9 @@ cur.execute("""
         SET month_name = strftime('%m', timestamp);
 """)
 
-# date and time with the highest demand in 2017
+"""
+f. Date and time with the highest demand in 2017
+"""
 max_d = cur.execute("""SELECT MAX(demand), timestamp
             FROM cars_table
             WHERE timestamp BETWEEN '2017-01-01 00:00:00' AND '2017-12-31 23:59:59';
@@ -130,7 +166,9 @@ max_d = cur.execute("""SELECT MAX(demand), timestamp
 for row in max_d:
     print(row)
 
-# creating a table with the highest demand rate throughout 2017
+""" 
+g. Create a table with the highest demand rate throughout 2017
+"""
 cur.execute("""
         CREATE TABLE highest_demand2017 (
              week_name TEXT,
@@ -174,7 +212,9 @@ cur.execute("""
         LIMIT 1;
 """)
 
-# creating a table with the lowest demand through out 2017
+"""
+h. Create a table with the lowest demand through out 2017
+"""
 cur.execute("""CREATE TABLE lowest_demand2017(
         nameofweek TEXT,
         month TEXT,
@@ -223,13 +263,17 @@ for row in h:
 l = cur.execute("""SELECT * FROM lowest_demand2017;""")
 for row in l:
         print(row)
-        
-#7c The first query fetch the day of week with the highest demand rate throughout 2017.
+ 
+"""
+i. For the weekday selected in 'h' create a table showing the average demand rate we had at different hours of that weekday throughout 2017, 
+sorting the results in descending order based on the average demand rates. 
+"""
+# The first query fetch the day of week with the highest demand rate throughout 2017.
 a = cur.execute("""SELECT week_name FROM highest_demand2017;""")
 for row in a:
         print(row)
 
-# Then, create the table to show the average demand rate for different hours in the week.
+# Then, create table to show the average demand rate for different hours in the week.
 highest_nameofweek = '0'
 cur.execute("""
         CREATE TABLE hour_highest_demand AS
@@ -292,7 +336,9 @@ for row in d:
         print(f"Hour: {hour}, Average Demand: {avg_demand}")
 
  
-# most prevalent weather in 2017
+"""
+j. Showing the most prevalent weather in 2017
+"""
 weather_count = cur.execute("""
         SELECT temp_categories, COUNT(temp_categories) AS count
         FROM cars_table
@@ -305,7 +351,9 @@ for row in weather_count:
     print(row)
 print("The most prevalent weather in 2017 was Mild")
 
-# creating a table to show the highest, lowest and average windspeed for each month in 2017
+"""
+k. Create a table to show the highest, lowest and average windspeed for each month in 2017
+"""
 cur.execute("""
         CREATE TABLE windspeed
         AS SELECT (strftime('%m', timestamp)) as month, MAX(windspeed) AS max_windspeed, 
@@ -315,7 +363,9 @@ cur.execute("""
         GROUP BY (strftime('%m', timestamp));
 """)
 
-# creating a table to show the highest, lowest and average humidity for each month in 2017
+"""
+l. Create a table to show the highest, lowest and average humidity for each month in 2017
+"""
 cur.execute("""
         CREATE TABLE humidity
         AS SELECT (strftime('%m', timestamp)) as month, MAX(humidity) AS max_humidity, 
@@ -325,7 +375,9 @@ cur.execute("""
         GROUP BY (strftime('%m', timestamp));
 """)
 
-# creating a table to show average demand for the weather types in 2017
+"""
+m. Create a table to show average demand for the weather types in 2017
+"""
 cur.execute("""
         CREATE TABLE average_demand
         AS SELECT temp_categories, AVG(demand) AS average
